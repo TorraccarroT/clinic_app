@@ -33,7 +33,7 @@ SECRET_KEY = 'django-insecure-_q#lm4igfzti#mfj^kn5*k=9-3cl7bf7$9t2sl@9_e-rwq0ska
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['clinic-app-ra-7f5effe75a0e.herokuapp.com']
 AUTH_USER_MODEL = 'clinic_app.clinic_user'
 
 

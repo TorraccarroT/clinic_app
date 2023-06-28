@@ -31,9 +31,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-_q#lm4igfzti#mfj^kn5*k=9-3cl7bf7$9t2sl@9_e-rwq0ska'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['clinic-app-ra-7f5effe75a0e.herokuapp.com']
+ALLOWED_HOSTS = ['*']
 AUTH_USER_MODEL = 'clinic_app.clinic_user'
 
 
@@ -153,7 +153,6 @@ DATABASES = {
         'PASSWORD' : DATABASE_PASS,
         'HOST' : DATABASE_HOST,
         'PORT' : '3306',
-        'CONN_MAX_AGE': 18000, 
     }
 }
 
@@ -206,12 +205,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SAMESITE = 'Strict'
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# SESSION_COOKIE_SAMESITE = 'Strict'
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
+# SECURE_HSTS_SECONDS = 31536000  # 1 year
+# SECURE_CONTENT_TYPE_NOSNIFF = True
+# SECURE_BROWSER_XSS_FILTER = True
+# X_FRAME_OPTIONS = 'DENY'
+
 

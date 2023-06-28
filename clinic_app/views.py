@@ -164,7 +164,7 @@ def dataView_Status(request):
 def dataView_Status_view(request):
     try:        
         if request.method == 'GET':
-            snippets = Data.objects.filter(Q(sick_status=1) | Q(sick_status=2) | Q(sick_status=3))
+            snippets = Data.objects.all()
             # filter(sick_status=0)
             serializer = Auction_Topic_Serializer(snippets,  many=True)
             return Response(serializer.data)

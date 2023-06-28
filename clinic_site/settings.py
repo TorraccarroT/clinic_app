@@ -31,7 +31,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-_q#lm4igfzti#mfj^kn5*k=9-3cl7bf7$9t2sl@9_e-rwq0ska'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 AUTH_USER_MODEL = 'clinic_app.clinic_user'

@@ -92,6 +92,8 @@ from rest_framework.response import Response
 
 from .serializers import *
 import pytz
+from datetime import datetime
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_patient(request):
@@ -103,7 +105,7 @@ def register_patient(request):
         last_year = int(last_number[2:6])
 
         if last_year < current_year:
-            new_number = 1  # ถ้าปีใหม่เริ่มต้นเลขที่เป็น 1
+            new_number = 1
         else:
             if last_number and last_number[6:].isdigit():
                 last_number_int = int(last_number[6:])
@@ -113,12 +115,11 @@ def register_patient(request):
 
         new_clinic_number = f'CN{str(current_year).zfill(2)}{str(new_number).zfill(4)}'
 
-        # ตรวจสอบว่า Clinic Number ซ้ำหรือไม่
         while Data.objects.filter(number=new_clinic_number).exists():
             new_number += 1
             new_clinic_number = f'CN{str(current_year).zfill(2)}{str(new_number).zfill(4)}'
     else:
-        new_clinic_number = f'CN{str(current_year).zfill(2)}0001'  # ถ้ายังไม่มีข้อมูลเลยใช้ CNYY0001
+        new_clinic_number = f'CN{str(current_year).zfill(2)}0001'
 
     new_data = Data.objects.create(
         number=new_clinic_number,
@@ -143,12 +144,13 @@ def register_patient(request):
     serializer = Auction_Topic_Serializer(new_data)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def dataView_Status(request):
     try:        
         if request.method == 'GET':
-            snippets =  Data.objects.all()
+            snippets =  Data.objects.all().order_by('-id')
             # filter(sick_status=0)
             serializer = Auction_Topic_Serializer(snippets,  many=True)
             return Response(serializer.data)
@@ -161,21 +163,83 @@ def dataView_Status(request):
         return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
-    
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def dataView_Status_view(request):
     try:        
         if request.method == 'GET':
-            snippets = Data.objects.filter(Q(sick_status=1) | Q(sick_status=2) | Q(sick_status=3))
-            serializer = Auction_Topic_Serializer(snippets,  many=True)
+            snippets = Data.objects.filter(Q(sick_status=1) | Q(sick_status=2) | Q(sick_status=3)).order_by('-id')
+            serializer = Auction_Topic_Serializer(snippets, many=True)
             return Response(serializer.data)
         else:
             data = {'message': 'เกิดข้อผิดพลาด'}
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as data:
+    except Exception as e:
         data = {'message': 'เกิดข้อผิดพลาด'}
         return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def dataView_Status_view_1(request):
+    Show_Report = request.query_params.get('Show_Report')
+    if Show_Report:
+        orders = Save_Data.objects.values(
+                'person_data__number',
+                'person_data__firstname',
+                'person_data__lastname',
+                'person_data__tel',
+                'person_data__sex',
+                'person_data__date',
+                'person_data__drug_allergy',
+                'person_data__id_person',
+                'person_data__career',
+                'person_data__address_current',
+                'person_data__name_company',
+                'person_data__tel_emergency',
+                'person_data__note',
+                'person_data__sickdisease',
+                'person_data__image_sick',
+                'person_data__sick_status',
+                'type_sick_data',
+                'sick_data'
+
+            ).filter(person_data__id=Show_Report)
+
+
+
+    if not orders:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=status.HTTP_404_NOT_FOUND)
+    
+    order_data = []
+    for order in orders:
+        data = {
+            'person_data__number': order['person_data__number'],
+            'person_data__firstname': order['person_data__firstname'],
+            'person_data__lastname': order['person_data__lastname'],
+            'person_data__tel': order['person_data__tel'],
+            'person_data__sex': order['person_data__sex'],
+            'person_data__date': order['person_data__date'].strftime('%d/%m/%Y'),
+            'person_data__drug_allergy': order['person_data__drug_allergy'],
+            'person_data__id_person': order['person_data__id_person'],
+            'person_data__career': order['person_data__career'],
+            'person_data__address_current': order['person_data__address_current'],
+            'person_data__name_company': order['person_data__name_company'],
+            'person_data__tel_emergency': order['person_data__tel_emergency'],
+            'person_data__note': order['person_data__note'],
+            'person_data__sickdisease': order['person_data__sickdisease'],
+            'person_data__image_sick': order['person_data__image_sick'],
+            'person_data__sick_status': order['person_data__sick_status'],
+            'type_sick_data': order['type_sick_data'],
+            'sick_data': order['sick_data']
+
+
+
+        }
+        order_data.append(data)
+
+    return Response(order_data)
 
 from django.db.models import Q
 
@@ -231,12 +295,12 @@ def create_save_data(request):
     sick_data = request.data.get('sick_data')
     if not (data_id and type_sick_data and sick_data):
             return Response({'message': 'ไม่พบข้อมูล'}, status=400)
-    try:
-        # ตรวจสอบว่าข้อมูลซ้ำหรือไม่
-        Save_Data.objects.get(person_data_id=data_id, type_sick_data=type_sick_data, sick_data=sick_data)
-        return Response({'message': 'ข้อมูลซ้ำกัน'}, status=400)
-    except ObjectDoesNotExist:
-        pass
+    # try:
+    #     # ตรวจสอบว่าข้อมูลซ้ำหรือไม่
+    #     Save_Data.objects.get(person_data_id=data_id, type_sick_data=type_sick_data, sick_data=sick_data)
+    #     return Response({'message': 'ข้อมูลซ้ำกัน'}, status=400)
+    # except ObjectDoesNotExist:
+    #     pass
 
     try:
         # สร้าง Save_Data
@@ -266,18 +330,20 @@ def CusDetail(request, pk):
         
         return Response(serializer.data)
     
-
+from datetime import datetime
 
 @api_view(['PUT'])
 @permission_classes([AllowAny])
 def update_123(request):
     show_Id = request.data.get('show_Id')
     sick_status = request.data.get('sick_status')
+    sick_date = request.data.get('sick_date')  # เปลี่ยน request.date เป็น request.data
     if not (sick_status and show_Id ):
-            return Response({'message': 'ไม่พบข้อมูล'}, status=400)
+            return Response({'message': 'ไม่กรอกพาราม'}, status=400)
     try:
         product = Data.objects.get(pk=show_Id)
         product.sick_status = sick_status
+        product.date = sick_date
         product.save()
         serializer = Auction_Topic_Serializer_Status(product)
         response_data = {
@@ -291,6 +357,7 @@ def update_123(request):
     
     except Data.DoesNotExist:
         return Response({"error": "เกิดข้อผิดพลาด"}, status=404)
+
     
 
 
@@ -406,6 +473,7 @@ import datetime
 
 from datetime import datetime
 
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def create_order(request):
@@ -417,22 +485,27 @@ def create_order(request):
         number=order_number,
         patient_id=data['patient'],
         credit_card=data['credit_card'],
-        address=data['address']
+        address=data['address'],
+        input_1=data['input_1'],
+        input_2=data['input_2'],
+        input_3=data['input_3'],
+        doctor_1=data['doctor_1']
     )
 
     # สร้าง OrderItem
     for item_data in data['items']:
         product = Shop_Product.objects.get(id=item_data['product'])
-        # คำนวณราคาอัตโนมัติจากข้อมูลที่สืบทอดมา
         price = product.shop_price
         qty = item_data['qty']
         sum_price = price * qty
+
         if product.shop_qty < qty:
             return Response({'message': 'สินค้าหมด'}, status=400)
 
-            # ตัด stock
+        # ตัด stock
         product.shop_qty -= qty
         product.save()
+
         OrderItem.objects.create(
             order=order,
             product=product,
@@ -441,7 +514,7 @@ def create_order(request):
             sum_price=sum_price
         )
 
-    return Response({'message': 'สร้างสำเร็จ'})
+    return Response({'message': 'สร้างสำเร็จ'},status=status.HTTP_201_CREATED)
 
 
 def generate_order_number():
@@ -501,6 +574,8 @@ def search_report_product(request):
 @permission_classes([AllowAny])
 def get_orders(request):
     Show_Report = request.data.get('Show_Report')
+    if not Show_Report:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=status.HTTP_404_NOT_FOUND)
     print(Show_Report)
     print(type(Show_Report))
     orders = OrderItem.objects.values(
@@ -531,17 +606,17 @@ def get_orders(request):
 
             'ORDER ID': order['order__number'],
             'User': order['order__patient'],
-            'Create-Date': order['order__created_at'],
-            'Credit-Card': order['order__credit_card'],
+            'Create_Date': order['order__created_at'],
+            'Credit_Card': order['order__credit_card'],
             'Payment': order['order__pay_check'],
             'Address': order['order__address'],
-            'Product-Code': order['product__shop_code'],
-            'Product-Qty': order['product__shop_qty'],
-            'Product-Ps': order['product__shop_ps'],
-            'Product-Type': order['product__shop_type'],
-            'Product-Count': order['product__shop_count'],
-            'Product-Price': order['product__shop_price'],
-            'Product-Sum Price': order['sum_price'],
+            'Product_Code': order['product__shop_code'],
+            'Product_Qty': order['product__shop_qty'],
+            'Product_Ps': order['product__shop_ps'],
+            'Product_Type': order['product__shop_type'],
+            'Product_Count': order['product__shop_count'],
+            'Product_Price': order['product__shop_price'],
+            'Product_Sum Price': order['sum_price'],
       
 
         }
@@ -558,53 +633,88 @@ def get_orders(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_pays(request):
-    Show_Report = request.data.get('Show_Report')
-    print(Show_Report)
-    print(type(Show_Report))
-    orders = OrderItem.objects.values(
-         'order__number',
-         'order__patient__firstname',
-         'order__patient__lastname',
-         'order__patient__number',
-         'order__patient__tel_emergency',
-         'order__patient__tel',
-         'order__pay_status'
+    try:
+        order_items = OrderItem.objects.values(
+            'order__number',
+            'order__patient__id',
+            'order__patient__firstname',
+            'order__patient__lastname',
+            'order__patient__number',
+            'order__patient__tel_emergency',
+            'order__patient__tel',
+            'order__pay_status',
+            'order__pay_check',
+            'qty',
+            'price',
+            'product__shop_name',
+            'sum_price'
+        ).order_by('-id')
 
-    
-        )
-
-
-    if not orders:
+        if not order_items:
             return Response({'message': 'ไม่พบข้อมูล'}, status=status.HTTP_404_NOT_FOUND)
-    order_data = []
-    prev_order_id = None  # เพิ่มตัวแปร prev_order_id เพื่อเก็บค่า ORDER ID ก่อนหน้า
 
-    for order in orders:
-            if order['order__number'] != prev_order_id:
-                data = {
-                    'ORDER_ID': order['order__number'],
-                    'First_Name': order['order__patient__firstname'],
-                    'Last_Name': order['order__patient__lastname'],
-                    'Clinic_Num': order['order__patient__number'],
-                    'Tel_EMG': order['order__patient__tel_emergency'],
-                    'Tel': order['order__patient__tel'],
-                    'Status': order['order__pay_status'],
-                 
-                }
-                order_data.append(data)
-                prev_order_id = order['order__number']  # อัปเดตค่า prev_order_id เป็น ORDER ID ปัจจุบัน
+        order_data = []
+        prev_order_number = None
+        order_items_data = []
 
-    return Response(order_data)
+        for order_item in order_items:
+            order_number = order_item['order__number']
 
+            if order_number != prev_order_number:
+                if prev_order_number:
+                    order_data.append({
+                        'ORDER_ID': prev_order_number,
+                        'User_ID': prev_order['order__patient__id'],
+                        'First_Name': prev_order['order__patient__firstname'],
+                        'Last_Name': prev_order['order__patient__lastname'],
+                        'Clinic_Num': prev_order['order__patient__number'],
+                        'Tel_EMG': prev_order['order__patient__tel_emergency'],
+                        'Tel': prev_order['order__patient__tel'],
+                        'Pay_Date': prev_order['order__pay_check'].strftime('%d-%m-%Y'),
+                        'Status': prev_order['order__pay_status'],
+                        'Items': order_items_data
+                    })
 
+                prev_order_number = order_number
+                order_items_data = []
+
+            item_data = {
+                'Product': order_item['product__shop_name'],
+                'Quantity': order_item['qty'],
+                'Price': order_item['price'],
+                'Total_Price': order_item['sum_price'],
+            }
+            order_items_data.append(item_data)
+            prev_order = order_item
+
+        if prev_order:
+            order_data.append({
+                'ORDER_ID': prev_order_number,
+                'User_ID': prev_order['order__patient__id'],
+                'First_Name': prev_order['order__patient__firstname'],
+                'Last_Name': prev_order['order__patient__lastname'],
+                'Clinic_Num': prev_order['order__patient__number'],
+                'Tel_EMG': prev_order['order__patient__tel_emergency'],
+                'Tel': prev_order['order__patient__tel'],
+                'Pay_Date': prev_order['order__pay_check'].strftime('%d-%m-%Y'),
+                'Status': prev_order['order__pay_status'],
+                'Items': order_items_data
+            })
+
+        return Response(order_data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def change_order_status(request):
     order_id = request.data.get('order_id')  # รับ order_id จาก request.data
     new_status = request.data.get('new_status')  # รับสถานะใหม่จาก request.data
-
+    if not order_id and new_status :
+            return Response({'message': 'ไม่สามารถดำเนินการได้'}, status=status.HTTP_400_BAD_REQUEST)
     try:
+   
         order_item = Order.objects.get(number=order_id)
         order_item.pay_status = new_status
         order_item.save()
@@ -615,6 +725,7 @@ def change_order_status(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_orders_1(request):
+
     Show_Report = request.data.get('Show_Report')
     print(Show_Report)
     print(type(Show_Report))
@@ -638,24 +749,27 @@ def get_orders_1(request):
             'User': f"{order.patient.firstname} {order.patient.lastname}",
             'Address': order.address,
             'Num': order.number,
-            'Create-At': order.created_at,
-            'Credit-Card': order.credit_card,
+            'Create_At': order.created_at,
+            'Credit_Card': order.credit_card,
             'Payment': order.pay_check,
             'Item': order_item.product.shop_name,
-            'Item-Count': order_item.product.shop_count,
-            'Item-Qty': order_item.qty,
-            'Item-Price': order_item.product.shop_price,
-            'Item-SumPrice': order_item.sum_price,
+            'Item_Count': order_item.product.shop_count,
+            'Item_Qty': order_item.qty,
+            'Item_Price': order_item.product.shop_price,
+            'Item_SumPrice': order_item.sum_price,
         }
         order_data.append(data)
 
     return Response(order_data)
+
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_orders_2(request):
     Show_Report = request.query_params.get('Show_Report')
-    print(Show_Report)
-    print(type(Show_Report))
+    if not Show_Report:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=status.HTTP_400_BAD_REQUEST)
     
     if Show_Report:
         orders = OrderItem.objects.values(
@@ -673,6 +787,8 @@ def get_orders_2(request):
             'product__shop_count',
             'product__shop_price',
             'sum_price',
+            'order__doctor_1',
+            'qty',
         ).filter(order__number=Show_Report)
     else:
         orders = OrderItem.objects.values(
@@ -690,6 +806,7 @@ def get_orders_2(request):
             'product__shop_count',
             'product__shop_price',
             'sum_price',
+            'order__doctor_1'
         )
 
     if not orders:
@@ -702,16 +819,252 @@ def get_orders_2(request):
             'LastName': order['order__patient__lastname'],
             'Address': order['order__patient__address_current'],
             'Num': order['order__number'],
-            'Create-At': order['order__created_at'],
-            'Credit-Card': order['order__credit_card'],
-            'Payment': order['order__pay_check'],
+            'Create_At': order['order__created_at'].strftime('%d/%m/%Y'),
+            'Credit_Card': order['order__credit_card'],
+            'Payment': order['order__pay_check'].strftime('%d/%m/%Y'),
             'Item': order['product__shop_name'],
-            'Item-Count': order['product__shop_count'],
-            'Item-Qty': order['product__shop_qty'],
-            'Item-Price': order['product__shop_price'],
-            'Item-SumPrice': order['sum_price'],
+            'Item_Count': order['product__shop_count'],
+            'Item_Qty': order['qty'],
+            'Item_Price': order['product__shop_price'],
+            'Item_SumPrice': order['sum_price'],
+                            'doctor_doc':order['order__doctor_1']
+
+
         }
         order_data.append(data)
 
-    return Response(order_data)
+        # ตรวจสอบว่าข้อมูลซ้ำหรือไม่
+        existing_report = OrderReport.objects.filter(
+            first_name=order['order__patient__firstname'],
+            last_name=order['order__patient__lastname'],
+            address=order['order__patient__address_current'],
+            order_number=order['order__number'],
+            created_at=order['order__created_at'],
+            credit_card=order['order__credit_card'],
+            payment_date=order['order__pay_check'],
+            item_name=order['product__shop_name'],
+            item_count=order['product__shop_count'],
+            item_quantity=order['qty'],
+            item_price=order['product__shop_price'],
+            item_total_price=order['sum_price'],
+            user_doctor=order['order__doctor_1']
 
+        ).exists()
+
+        if not existing_report:
+            OrderReport.objects.create(
+                first_name=order['order__patient__firstname'],
+                last_name=order['order__patient__lastname'],
+                address=order['order__patient__address_current'],
+                order_number=order['order__number'],
+                created_at=order['order__created_at'],
+                credit_card=order['order__credit_card'],
+                payment_date=order['order__pay_check'],
+                item_name=order['product__shop_name'],
+                item_count=order['product__shop_count'],
+                item_quantity=order['qty'],
+                item_price=order['product__shop_price'],
+                item_total_price=order['sum_price'],
+                user_doctor=order['order__doctor_1']
+            )
+        else:
+            data['Message'] = 'ข้อมูลซ้ำ'
+
+    return Response(order_data, status=status.HTTP_200_OK)
+
+from rest_framework.request import Request
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_order_reports_1(request):
+    Show_Report = request.query_params.get('Show_Report')
+    if not Show_Report:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=status.HTTP_400_BAD_REQUEST)
+    order_reports = OrderReport.objects.filter(order_number=Show_Report)
+    serializer = Auction_Topic_Serializer_Data_1(order_reports, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+from django.conf import settings
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.templatetags.static import static
+
+from django.conf import settings
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.templatetags.static import static
+
+from datetime import date
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_report_date_3(request):
+    sick_num = request.GET.get('sick_num')
+
+    if sick_num == '1' or sick_num == '2' or sick_num =='3' or sick_num == '1,2,3':
+        sick_status_filters = sick_num.split(',')
+        reports = Data.objects.filter(sick_status__in=sick_status_filters).order_by('-id')
+    elif sick_num == '4' or sick_num == '5' or sick_num == '4,5':
+        if sick_num == '4':
+            sick_status_filters = ['2'] 
+        if sick_num == '5':
+            sick_status_filters = ['3','4'] 
+        if sick_num == '4,5':
+            sick_status_filters = ['2','3','4']
+        reports = Data.objects.filter(sick_status__in=sick_status_filters,date=date.today()).order_by('-id')
+    else:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=404)
+
+    if not reports:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=404)
+
+    report_data = [
+        {
+            'id':report.id,
+            'number': report.number,
+            'firstname': report.firstname,
+            'lastname': report.lastname,
+            'tel': report.tel,
+            'sex': report.sex or "ไม่ระบุ",
+            'date': report.date,
+            'drug_allergy': report.drug_allergy,
+            'id_person': report.id_person,
+            'career': report.career,
+            'address_current': report.address_current,
+            'name_company': report.name_company,
+            'tel_emergency': report.tel_emergency,
+            'note': report.note,
+            'sickdisease': report.sickdisease,
+            'image_sick': report.image_sick.url if report.image_sick else None,
+            'sick_status': report.sick_status,
+        }
+        for report in reports
+    ]
+
+    return Response(report_data)
+
+
+
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def send_data(request):
+    search = request.GET.get('search')
+
+
+    if search:
+        reports = Shop_Product.objects.filter(
+           
+            Q(shop_type__icontains=search) |
+            Q(shop_name__icontains=search) 
+
+    
+
+        ).filter(
+    Q(shop_type='ใช้ในการรักษา') |
+    Q(shop_type='ยา') |
+    Q(shop_type='ทั้งหมด')| Q(shop_type='ความงาม')
+).order_by('-id')
+    else:
+        reports = Shop_Product.objects.filter(Q(shop_type='ใช้ในการรักษา') | Q(shop_type='ยา') | Q(shop_type='ทั้งหมด') | Q(shop_type='ความงาม')).order_by('-id')
+
+    if not reports:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=404)
+
+    report_data = [
+        {
+            'id': report.id,
+            'shop_code': report.shop_code,
+            'shop_name': report.shop_name,
+            'shop_qty': report.shop_qty,
+            'shop_ps': report.shop_ps,
+            'shop_type': report.shop_type,
+            'shop_count': report.shop_count,
+            'shop_price': report.shop_price,
+        }
+        for report in reports
+    ]
+
+    return Response(report_data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def send_data_user(request):
+    search = request.GET.get('search')
+
+
+    if search:
+        reports = Shop_Product.objects.filter(
+           
+            Q(id__icontains=search) 
+    
+
+        ).order_by('-id')
+    else:
+        return Response({'msg':'ไม่พบข้อมูล'})
+
+    if not reports:
+        return Response({'message': 'ไม่พบข้อมูล'}, status=404)
+
+    report_data = [
+        {
+            'id': report.id,
+            'shop_code': report.shop_code,
+            'shop_name': report.shop_name,
+            'shop_qty': report.shop_qty,
+            'shop_ps': report.shop_ps,
+            'shop_type': report.shop_type,
+            'shop_count': report.shop_count,
+            'shop_price': report.shop_price,
+        }
+        for report in reports
+    ]
+    report_data = report_data.pop()
+
+    return Response(report_data)
+
+
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def change_order_status_1(request):
+    
+    order_id = request.data.get('order_id')
+    insert_1 = request.data.get('insert_1')
+    insert_2 = request.data.get('insert_2')
+    insert_3 = request.data.get('insert_3')
+
+    if not order_id or not insert_1 or not insert_2 or not insert_3:
+        return Response({'message': 'ไม่สามารถดำเนินการได้'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        order_item = Order.objects.get(number=order_id)
+        order_item.input_1 = insert_1
+        order_item.input_2 = insert_2
+        order_item.input_3 = insert_3
+
+        order_item.save()
+        return Response({'message': 'เปลี่ยนสถานะเรียบร้อยแล้ว'})
+    except Order.DoesNotExist:
+        return Response({'message': 'ไม่พบ Order ที่ระบุ'}, status=status.HTTP_404_NOT_FOUND)
+    
+
+
+@api_view(['PUT'])
+@permission_classes([AllowAny])
+def change_status(request):
+    user_id = request.data.get('user_id')  # รับ order_id จาก request.data
+    new_status = request.data.get('new_status')  # รับสถานะใหม่จาก request.data
+    if not user_id and new_status :
+            return Response({'message': 'ไม่สามารถดำเนินการได้'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+   
+        order_item = Data.objects.get(id=user_id)
+        order_item.sick_status = new_status
+        order_item.save()
+        return Response({'message': 'เปลี่ยนสถานะเรียบร้อยแล้ว'})
+    except OrderItem.DoesNotExist:
+        return Response({'message': 'ไม่พบ ID ที่ระบุ'}, status=status.HTTP_404_NOT_FOUND)

@@ -36,3 +36,14 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['number', 'patient', 'items']
+
+class Auction_Topic_Serializer_Data(serializers.ModelSerializer):
+    class Meta:
+        model = Save_Data
+        fields ='__all__'
+
+
+class Auction_Topic_Serializer_Data_1(serializers.ModelSerializer):
+    class Meta:
+        model = OrderReport
+        fields ='__all__'

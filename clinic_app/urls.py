@@ -11,6 +11,8 @@ urlpatterns = [
     path('search-person/',views.search_report_date),
     path('create-person',views.create_save_data),
     path('show-person',views.dataView_Status_view),
+    path('show-person1',views.dataView_Status_view_1),
+
     path('show-person/<int:pk>',views.CusDetail),
     path('product',views.ProListView),
     
@@ -29,7 +31,15 @@ urlpatterns = [
     path('get-pay',views.get_pays),
 
     path('pay',views.change_order_status),
-    path('report-order',views.get_orders_2)
+    path('report-order',views.get_orders_2),
+    path('search-status/', views.search_report_date_3),
+    path('choose/',views.send_data),
+    path('choose-product/',views.send_data_user),
+    path('send-doctor',views.change_order_status_1),
+    path('change-status',views.change_status),
+    path('report-order-1',views.get_order_reports_1)
+
+    
 ]
 from django.conf import settings  
 from django.conf.urls.static import static  
